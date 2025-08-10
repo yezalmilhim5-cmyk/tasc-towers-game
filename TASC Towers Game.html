@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>TASC Towers Game</title>
+    <style>
+        body {
+            margin: 0;
+            background: #f4e2b8;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            background: linear-gradient(#87ceeb, #f4e2b8);
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Game State Variables
+        let gameStarted = false;
+        let gameOver = false;
+        let score = 0;
+
+        // Clouds
+        class Cloud {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * (canvas.height / 3);
+                this.radius = 10 + Math.random() * 8;
+                this.speed = 0.3 + Math.random() * 0.3;
+            }
+            update() {
+                this.x -= this.speed;
+                if (this.x + this.radius * 3 < 0) {
+                    this.x = canvas.width + this.radius * 3;
+                    this.y = Math.random() * (canvas.height / 3);
+                    this.speed = 0.3 + Math.random() * 0.3;
+                }
+            }
+            draw() {
+                ctx.fillStyle = "rgba(255,255,255,0.8)";
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.arc(this.x + this.radius, this.y + 5, this.radius * 0.8, 0, Math.PI * 2);
+                ctx.arc(this.x - this.radius, this.y + 5, this.radius * 0.8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Stylized Robin bird
+        class Robin {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = 50 + Math.random() * 100;
+                this.speed = 1 + Math.random() * 1.2;
+                this.size = 16 + Math.random() * 8;
+                this.wingFlap = 0;
+                this.wingDirection = 1;
+            }
+            update() {
+                this.x -= this.speed;
+                this.wingFlap += 0.15 * this.wingDirection;
+                if (this.wingFlap > 0.6) this.wingDirection = -1;
+                if (this.wingFlap < -0.6) this.wingDirection = 1;
+
+                if (this.x + this.size < 0) {
+                    this.x = canvas.width + this.size;
+                    this.y = 50 + Math.random() * 100;
+                    this.speed = 1 + Math.random() * 1.2;
+                    this.size = 16 + Math.random() * 8;
+                    this.wingFlap = 0;
+                    this.wingDirection = 1;
+                }
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Body
+                ctx.fillStyle = "#5A3D2B"; // dark brown
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.size * 0.45, this.size * 0.3, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Breast - orange-red patch on front bottom half
+                ctx.fillStyle = "#D94F2E";
+                ctx.beginPath();
+                ctx.ellipse(0, this.size * 0.05, this.size * 0.3, this.size * 0.25, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tail (small triangle behind body)
+                ctx.fillStyle = "#4A3322";
+                ctx.beginPath();
+                ctx.moveTo(-this.size * 0.35, this.size * 0.05);
+                ctx.lineTo(-this.size * 0.7, this.size * 0.15);
+                ctx.lineTo(-this.size * 0.3, this.size * 0.3);
+                ctx.closePath();
+                ctx.fill();
+
+                // Wings - two arcs flapping
+                ctx.fillStyle = "#6B4B35";
+                ctx.beginPath();
+                ctx.ellipse(this.size * 0.1, 0, this.size * 0.35, this.size * 0.15 + Math.sin(this.wingFlap) * 4, Math.sin(this.wingFlap) * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.ellipse(this.size * 0.05, -this.size * 0.15, this.size * 0.3, this.size * 0.1 + Math.cos(this.wingFlap) * 3, Math.cos(this.wingFlap) * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Beak (small triangle front right)
+                ctx.fillStyle = "#D07C3A";
+                ctx.beginPath();
+                ctx.moveTo(this.size * 0.5, 0);
+                ctx.lineTo(this.size * 0.7, -this.size * 0.07);
+                ctx.lineTo(this.size * 0.7, this.size * 0.07);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        const clouds = [];
+        for (let i = 0; i < 8; i++) {
+            clouds.push(new Cloud());
+        }
+
+        const robins = [];
+        for (let i = 0; i < 2; i++) {
+            robins.push(new Robin());
+        }
+
+        // Player: Single triangle with a vertical gradient
+        function drawTriangleLogo(x, y, width, height) {
+            ctx.beginPath();
+            ctx.moveTo(x, y + height); // bottom-left
+            ctx.lineTo(x + width, y + height); // bottom-right
+            ctx.lineTo(x + width / 2, y); // top point (center)
+            ctx.closePath();
+
+            const gradient = ctx.createLinearGradient(x, 0, x + width, 0);
+            gradient.addColorStop(0, '#5c4a36'); // Dark brown on the left
+            gradient.addColorStop(1, '#c8b49b'); // Light beige on the right
+
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+
+        let gravity = 0.6;
+        let jumpPower = -12;
+        let baseGameSpeed = 4; // Adjusted base speed to make the start less frantic
+        let gameSpeed = baseGameSpeed;
+        const TIME_BETWEEN_OBSTACLES = 55;
+
+        class Player {
+            constructor() {
+                this.width = 40;
+                this.height = 27;
+                this.x = 50;
+                this.y = canvas.height - this.height - 40;
+                this.dy = 0;
+                this.grounded = true;
+            }
+            jump() {
+                if (this.grounded && !gameOver && gameStarted) {
+                    this.dy = jumpPower;
+                    this.grounded = false;
+                }
+            }
+            update() {
+                this.y += this.dy;
+                this.dy += gravity;
+                if (this.y + this.height >= canvas.height - 40) {
+                    this.y = canvas.height - this.height - 40;
+                    this.dy = 0;
+                    this.grounded = true;
+                }
+            }
+            draw() {
+                drawTriangleLogo(this.x, this.y, this.width, this.height);
+            }
+        }
+
+        // Standard Tower
+        class Tower {
+            constructor(height, xOffset = 0) {
+                this.width = 25;
+                this.height = height;
+                this.x = canvas.width + xOffset;
+                this.y = canvas.height - this.height - 40;
+                this.type = "tower";
+            }
+            update() {
+                this.x -= gameSpeed;
+            }
+            draw() {
+                ctx.strokeStyle = "#555";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x + 3, this.y);
+                ctx.lineTo(this.x + 3, this.y + this.height);
+                ctx.moveTo(this.x + this.width - 3, this.y);
+                ctx.lineTo(this.x + this.width - 3, this.y + this.height);
+                ctx.stroke();
+
+                ctx.lineWidth = 1.5;
+                for (let i = this.y; i <= this.y + this.height; i += 10) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 3, i);
+                    ctx.lineTo(this.x + this.width - 3, i);
+                    ctx.stroke();
+                }
+
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= this.height; i += 10) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 3, this.y + i);
+                    ctx.lineTo(this.x + this.width - 3, this.y + i + 10);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width - 3, this.y + i);
+                    ctx.lineTo(this.x + 3, this.y + i + 10);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        // --- UPDATED Tall Tower class ---
+        class TallTower extends Tower {
+            constructor() {
+                super(80); // Set to a slightly shorter height
+                this.width = 30; 
+                this.type = "tall-tower";
+            }
+        }
+
+        class Man {
+            constructor() {
+                this.width = 30;
+                this.height = 60;
+                this.x = canvas.width;
+                this.y = canvas.height - this.height - 40;
+                this.type = "man";
+            }
+            update() {
+                this.x -= gameSpeed;
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+            
+                // Dishdasha (Body) - Triangle
+                ctx.fillStyle = "#FFFFFF";
+                ctx.beginPath();
+                ctx.moveTo(this.width / 2, 10);
+                ctx.lineTo(0, this.height - 5);
+                ctx.lineTo(this.width, this.height - 5);
+                ctx.closePath();
+                ctx.fill();
+
+                // Arms (simple lines)
+                ctx.strokeStyle = "#FFFFFF";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(0, 30);
+                ctx.lineTo(-5, 40);
+                ctx.moveTo(this.width, 30);
+                ctx.lineTo(this.width + 5, 40);
+                ctx.stroke();
+
+                // Head Shape (simple circle)
+                ctx.fillStyle = "#FFDBAC";
+                ctx.beginPath();
+                ctx.arc(this.width / 2, 5, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // --- Angry Face Details ---
+                // Eyebrows
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#4a3322";
+                ctx.beginPath();
+                ctx.moveTo(this.width / 2 - 5, 3);
+                ctx.lineTo(this.width / 2 - 2, 3);
+                ctx.moveTo(this.width / 2 + 5, 3);
+                ctx.lineTo(this.width / 2 + 2, 3);
+                ctx.stroke();
+                
+                // Eyes (small black dots)
+                ctx.fillStyle = "#000000";
+                ctx.beginPath();
+                ctx.arc(this.width / 2 - 3, 5, 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.width / 2 + 3, 5, 1, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Mouth (a straight, downturned line)
+                ctx.strokeStyle = "#4a3322";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.width / 2 - 4, 10);
+                ctx.lineTo(this.width / 2 + 4, 10);
+                ctx.stroke();
+
+                // Feet (small rectangles)
+                ctx.fillStyle = "#4a3322";
+                ctx.fillRect(5, this.height - 5, 5, 5);
+                ctx.fillRect(this.width - 10, this.height - 5, 5, 5);
+
+                ctx.restore();
+            }
+        }
+
+        class Generator {
+            constructor() {
+                this.width = 40;
+                this.height = 30;
+                this.x = canvas.width;
+                this.y = canvas.height - this.height - 40;
+                this.type = "generator";
+            }
+            update() {
+                this.x -= gameSpeed;
+            }
+            draw() {
+                // Main body
+                ctx.fillStyle = "#B30000";
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // Grey details
+                ctx.fillStyle = "#A9A9A9";
+                ctx.fillRect(this.x + 5, this.y + 5, this.width - 10, 5);
+                ctx.fillRect(this.x + 5, this.y + this.height - 10, this.width - 10, 5);
+
+                // Exhaust pipe
+                ctx.strokeStyle = "#808080";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width - 5, this.y - 5);
+                ctx.lineTo(this.x + this.width - 5, this.y);
+                ctx.stroke();
+
+                // Label
+                ctx.fillStyle = "white";
+                ctx.font = "8px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("GENERATOR", this.x + this.width / 2, this.y + this.height / 2 + 3);
+            }
+        }
+
+        let player = new Player();
+        let obstacles = [];
+
+        function spawnObstacle() {
+            const shortTowerHeight = 35;
+            const obstacleChoice = Math.floor(Math.random() * 4); 
+
+            switch (obstacleChoice) {
+                case 0:
+                    obstacles.push(new Tower(shortTowerHeight));
+                    break;
+                case 1:
+                    obstacles.push(new Man());
+                    break;
+                case 2:
+                    obstacles.push(new Generator());
+                    break;
+                case 3:
+                    obstacles.push(new TallTower());
+                    break;
+            }
+        }
+
+        function drawDesert() {
+            ctx.fillStyle = "#f4e2b8";
+            ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+            ctx.fillStyle = "#d2b48c";
+            for (let i = 0; i < canvas.width; i += 30) {
+                ctx.beginPath();
+                ctx.arc(i, canvas.height - 8, 15, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawScore() {
+            ctx.font = "bold 24px Arial";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#4a3322";
+            ctx.shadowColor = "rgba(255,255,255,0.4)";
+            ctx.shadowBlur = 5;
+            ctx.fillText("Score: " + score, canvas.width / 2, 40);
+            ctx.shadowBlur = 0;
+        }
+
+        function drawGameOverScreen() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "white";
+            ctx.font = "50px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("Game Over", canvas.width / 2, canvas.height / 2 - 90);
+
+            ctx.font = "30px Arial";
+            ctx.fillText("Your score: " + score, canvas.width / 2, canvas.height / 2 - 40);
+
+            ctx.font = "24px Arial";
+            ctx.fillText("Press Space to play again", canvas.width / 2, canvas.height / 2);
+        }
+
+        function drawStartScreen() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "white";
+            ctx.font = "50px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("TASC Towers Game", canvas.width / 2, canvas.height / 2 - 40);
+
+            ctx.font = "24px Arial";
+            ctx.fillText("Press Space to Start", canvas.width / 2, canvas.height / 2);
+        }
+
+        function resetGame() {
+            player = new Player();
+            obstacles = [];
+            score = 0;
+            gameSpeed = baseGameSpeed; 
+            gameOver = false;
+            gameStarted = true;
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Cloud and bird animations continue to run for visual effect
+            clouds.forEach(c => {
+                c.update();
+                c.draw();
+            });
+
+            robins.forEach(bird => {
+                bird.update();
+                bird.draw();
+            });
+
+            drawDesert();
+            
+            if (gameStarted && !gameOver) {
+                player.update();
+                player.draw();
+                
+                // NEW: This calculation slows down the speed increase to every 10 points
+                // and increases it by a smaller amount (0.5)
+                gameSpeed = baseGameSpeed + Math.floor(score / 10) * 0.5;
+                
+                const dynamicSpawnDistance = gameSpeed * TIME_BETWEEN_OBSTACLES;
+                if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - dynamicSpawnDistance) {
+                    spawnObstacle();
+                }
+
+                for (let i = obstacles.length - 1; i >= 0; i--) {
+                    const obstacle = obstacles[i];
+                    obstacle.update();
+                    obstacle.draw();
+
+                    const playerLeft = player.x;
+                    const playerRight = player.x + player.width;
+                    const playerBottom = player.y + player.height;
+
+                    const obstacleLeft = obstacle.x;
+                    const obstacleRight = obstacle.x + obstacle.width;
+                    const obstacleTop = obstacle.y;
+
+                    if (
+                        playerRight > obstacleLeft &&
+                        playerLeft < obstacleRight &&
+                        playerBottom > obstacleTop
+                    ) {
+                        gameOver = true;
+                    }
+
+                    if (obstacle.x + obstacle.width < 0) {
+                        obstacles.splice(i, 1);
+                        if (!gameOver) score++;
+                    }
+                }
+
+                drawScore();
+            } else if (!gameStarted) {
+                player.draw();
+                drawStartScreen();
+            } else if (gameOver) {
+                player.draw();
+                for (const obstacle of obstacles) {
+                    obstacle.draw();
+                }
+                drawGameOverScreen();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener("keydown", e => {
+            if (e.code === "Space") {
+                if (!gameStarted || gameOver) {
+                    resetGame();
+                } else {
+                    player.jump();
+                }
+            }
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>
