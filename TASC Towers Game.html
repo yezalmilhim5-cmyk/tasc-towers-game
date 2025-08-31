@@ -6,17 +6,13 @@
     <style>
         body {
             margin: 0;
-            background: #f4e2b8;
+            background: transparent; /* no beige background */
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
         }
         canvas {
-            background: linear-gradient(#87ceeb, #f4e2b8);
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
-            border-radius: 8px;
+            display: block;
+            margin: 0;
+            background: linear-gradient(#87ceeb, #d2b48c); /* sky → sand */
         }
     </style>
 </head>
@@ -87,18 +83,18 @@
                 ctx.translate(this.x, this.y);
 
                 // Body
-                ctx.fillStyle = "#5A3D2B"; // dark brown
+                ctx.fillStyle = "#5A3D2B"; 
                 ctx.beginPath();
                 ctx.ellipse(0, 0, this.size * 0.45, this.size * 0.3, 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Breast - orange-red patch on front bottom half
+                // Breast
                 ctx.fillStyle = "#D94F2E";
                 ctx.beginPath();
                 ctx.ellipse(0, this.size * 0.05, this.size * 0.3, this.size * 0.25, 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Tail (small triangle behind body)
+                // Tail
                 ctx.fillStyle = "#4A3322";
                 ctx.beginPath();
                 ctx.moveTo(-this.size * 0.35, this.size * 0.05);
@@ -107,7 +103,7 @@
                 ctx.closePath();
                 ctx.fill();
 
-                // Wings - two arcs flapping
+                // Wings
                 ctx.fillStyle = "#6B4B35";
                 ctx.beginPath();
                 ctx.ellipse(this.size * 0.1, 0, this.size * 0.35, this.size * 0.15 + Math.sin(this.wingFlap) * 4, Math.sin(this.wingFlap) * 0.4, 0, Math.PI * 2);
@@ -117,7 +113,7 @@
                 ctx.ellipse(this.size * 0.05, -this.size * 0.15, this.size * 0.3, this.size * 0.1 + Math.cos(this.wingFlap) * 3, Math.cos(this.wingFlap) * 0.3, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Beak (small triangle front right)
+                // Beak
                 ctx.fillStyle = "#D07C3A";
                 ctx.beginPath();
                 ctx.moveTo(this.size * 0.5, 0);
@@ -131,26 +127,21 @@
         }
 
         const clouds = [];
-        for (let i = 0; i < 8; i++) {
-            clouds.push(new Cloud());
-        }
+        for (let i = 0; i < 8; i++) clouds.push(new Cloud());
 
         const robins = [];
-        for (let i = 0; i < 2; i++) {
-            robins.push(new Robin());
-        }
+        for (let i = 0; i < 2; i++) robins.push(new Robin());
 
-        // Player: Single triangle with a vertical gradient
         function drawTriangleLogo(x, y, width, height) {
             ctx.beginPath();
-            ctx.moveTo(x, y + height); // bottom-left
-            ctx.lineTo(x + width, y + height); // bottom-right
-            ctx.lineTo(x + width / 2, y); // top point (center)
+            ctx.moveTo(x, y + height);
+            ctx.lineTo(x + width, y + height);
+            ctx.lineTo(x + width / 2, y);
             ctx.closePath();
 
             const gradient = ctx.createLinearGradient(x, 0, x + width, 0);
-            gradient.addColorStop(0, '#5c4a36'); // Dark brown on the left
-            gradient.addColorStop(1, '#c8b49b'); // Light beige on the right
+            gradient.addColorStop(0, '#5c4a36');
+            gradient.addColorStop(1, '#c8b49b');
 
             ctx.fillStyle = gradient;
             ctx.fill();
@@ -158,7 +149,7 @@
 
         let gravity = 0.6;
         let jumpPower = -12;
-        let baseGameSpeed = 10; // Adjusted base speed to make the start less frantic
+        let baseGameSpeed = 10;
         let gameSpeed = baseGameSpeed;
         const TIME_BETWEEN_OBSTACLES = 55;
 
@@ -191,7 +182,6 @@
             }
         }
 
-        // Standard Tower
         class Tower {
             constructor(height, xOffset = 0) {
                 this.width = 25;
@@ -200,9 +190,7 @@
                 this.y = canvas.height - this.height - 40;
                 this.type = "tower";
             }
-            update() {
-                this.x -= gameSpeed;
-            }
+            update() { this.x -= gameSpeed; }
             draw() {
                 ctx.strokeStyle = "#555";
                 ctx.lineWidth = 2;
@@ -235,11 +223,10 @@
                 }
             }
         }
-        
-        // --- UPDATED Tall Tower class ---
+
         class TallTower extends Tower {
             constructor() {
-                super(80); // Set to a slightly shorter height
+                super(80);
                 this.width = 30; 
                 this.type = "tall-tower";
             }
@@ -253,14 +240,11 @@
                 this.y = canvas.height - this.height - 40;
                 this.type = "man";
             }
-            update() {
-                this.x -= gameSpeed;
-            }
+            update() { this.x -= gameSpeed; }
             draw() {
                 ctx.save();
                 ctx.translate(this.x, this.y);
-            
-                // Dishdasha (Body) - Triangle
+
                 ctx.fillStyle = "#FFFFFF";
                 ctx.beginPath();
                 ctx.moveTo(this.width / 2, 10);
@@ -269,7 +253,6 @@
                 ctx.closePath();
                 ctx.fill();
 
-                // Arms (simple lines)
                 ctx.strokeStyle = "#FFFFFF";
                 ctx.lineWidth = 3;
                 ctx.beginPath();
@@ -279,14 +262,11 @@
                 ctx.lineTo(this.width + 5, 40);
                 ctx.stroke();
 
-                // Head Shape (simple circle)
                 ctx.fillStyle = "#FFDBAC";
                 ctx.beginPath();
                 ctx.arc(this.width / 2, 5, 8, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // --- Angry Face Details ---
-                // Eyebrows
                 ctx.lineWidth = 2;
                 ctx.strokeStyle = "#4a3322";
                 ctx.beginPath();
@@ -296,7 +276,6 @@
                 ctx.lineTo(this.width / 2 + 2, 3);
                 ctx.stroke();
                 
-                // Eyes (small black dots)
                 ctx.fillStyle = "#000000";
                 ctx.beginPath();
                 ctx.arc(this.width / 2 - 3, 5, 1, 0, Math.PI * 2);
@@ -305,7 +284,6 @@
                 ctx.arc(this.width / 2 + 3, 5, 1, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Mouth (a straight, downturned line)
                 ctx.strokeStyle = "#4a3322";
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -313,7 +291,6 @@
                 ctx.lineTo(this.width / 2 + 4, 10);
                 ctx.stroke();
 
-                // Feet (small rectangles)
                 ctx.fillStyle = "#4a3322";
                 ctx.fillRect(5, this.height - 5, 5, 5);
                 ctx.fillRect(this.width - 10, this.height - 5, 5, 5);
@@ -330,20 +307,15 @@
                 this.y = canvas.height - this.height - 40;
                 this.type = "generator";
             }
-            update() {
-                this.x -= gameSpeed;
-            }
+            update() { this.x -= gameSpeed; }
             draw() {
-                // Main body
                 ctx.fillStyle = "#B30000";
                 ctx.fillRect(this.x, this.y, this.width, this.height);
 
-                // Grey details
                 ctx.fillStyle = "#A9A9A9";
                 ctx.fillRect(this.x + 5, this.y + 5, this.width - 10, 5);
                 ctx.fillRect(this.x + 5, this.y + this.height - 10, this.width - 10, 5);
 
-                // Exhaust pipe
                 ctx.strokeStyle = "#808080";
                 ctx.lineWidth = 3;
                 ctx.beginPath();
@@ -351,7 +323,6 @@
                 ctx.lineTo(this.x + this.width - 5, this.y);
                 ctx.stroke();
 
-                // Label
                 ctx.fillStyle = "white";
                 ctx.font = "8px Arial";
                 ctx.textAlign = "center";
@@ -367,25 +338,17 @@
             const obstacleChoice = Math.floor(Math.random() * 4); 
 
             switch (obstacleChoice) {
-                case 0:
-                    obstacles.push(new Tower(shortTowerHeight));
-                    break;
-                case 1:
-                    obstacles.push(new Man());
-                    break;
-                case 2:
-                    obstacles.push(new Generator());
-                    break;
-                case 3:
-                    obstacles.push(new TallTower());
-                    break;
+                case 0: obstacles.push(new Tower(shortTowerHeight)); break;
+                case 1: obstacles.push(new Man()); break;
+                case 2: obstacles.push(new Generator()); break;
+                case 3: obstacles.push(new TallTower()); break;
             }
         }
 
         function drawDesert() {
-            ctx.fillStyle = "#f4e2b8";
-            ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
             ctx.fillStyle = "#d2b48c";
+            ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+            ctx.fillStyle = "#c2a678";
             for (let i = 0; i < canvas.width; i += 30) {
                 ctx.beginPath();
                 ctx.arc(i, canvas.height - 8, 15, 0, Math.PI * 2);
@@ -444,16 +407,8 @@
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Cloud and bird animations continue to run for visual effect
-            clouds.forEach(c => {
-                c.update();
-                c.draw();
-            });
-
-            robins.forEach(bird => {
-                bird.update();
-                bird.draw();
-            });
+            clouds.forEach(c => { c.update(); c.draw(); });
+            robins.forEach(bird => { bird.update(); bird.draw(); });
 
             drawDesert();
             
@@ -461,8 +416,6 @@
                 player.update();
                 player.draw();
                 
-                // NEW: This calculation slows down the speed increase to every 10 points
-                // and increases it by a smaller amount (0.5)
                 gameSpeed = baseGameSpeed + Math.floor(score / 10) * 0.5;
                 
                 const dynamicSpawnDistance = gameSpeed * TIME_BETWEEN_OBSTACLES;
@@ -503,9 +456,7 @@
                 drawStartScreen();
             } else if (gameOver) {
                 player.draw();
-                for (const obstacle of obstacles) {
-                    obstacle.draw();
-                }
+                for (const obstacle of obstacles) obstacle.draw();
                 drawGameOverScreen();
             }
 
@@ -525,7 +476,4 @@
         gameLoop();
     </script>
 </body>
-
 </html>
-
-
